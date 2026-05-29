@@ -40,8 +40,26 @@ export default function IntelligentProgress() {
 
   useEffect(() => {
     apiClient
-      .get<ProgressData>('/api/ai/progress')
-      .then(setData)
+      .get<{ data?: ProgressData & { streak?: number; completedCourses?: number; totalCourses?: number; totalTimeSpent?: number; dailyGoal?: number; lastActive?: string }; success?: boolean }>('/api/ai/progress')
+      .then((response) => {
+        const payload = response?.data ?? response;
+        const courses = Array.isArray((payload as ProgressData).courses)
+          ? (payload as ProgressData).courses
+          : [
+              {
+                id: 'completion',
+                title: 'Course completion',
+                percent: Math.round(((payload.completedCourses ?? 0) / Math.max(1, payload.totalCourses ?? 1)) * 100),
+              },
+            ];
+        const insights = Array.isArray((payload as ProgressData).insights)
+          ? (payload as ProgressData).insights
+          : [
+              `${payload.streak ?? 0}-day streak`,
+              `${payload.totalTimeSpent ?? 0} minutes studied`,
+            ];
+        setData({ courses, insights });
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -65,7 +83,11 @@ export default function IntelligentProgress() {
           </div>
         )}
 
-        {error && <p className="text-sm text-center text-red-500 py-4">Failed to load progress.</p>}
+        {error && (
+          <p className="text-sm text-center text-red-500 py-4" role="alert">
+            Could not load progress.
+          </p>
+        )}
 
         {data && (
           <>

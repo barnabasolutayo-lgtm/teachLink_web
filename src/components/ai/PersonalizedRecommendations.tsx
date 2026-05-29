@@ -30,8 +30,20 @@ export default function PersonalizedRecommendations() {
 
   useEffect(() => {
     apiClient
-      .get<{ items: Recommendation[] }>('/api/ai/recommendations')
-      .then((r) => setItems(r.items))
+      .get<{ items?: Recommendation[]; data?: Recommendation[] } | { success?: boolean; data?: Recommendation[] }>('/api/ai/recommendations')
+      .then((response) => {
+        const payload = response as {
+          data?: Recommendation[];
+          items?: Recommendation[];
+          success?: boolean;
+        };
+        const nextItems = Array.isArray(payload.data)
+          ? payload.data
+          : Array.isArray(payload.items)
+            ? payload.items
+            : [];
+        setItems(nextItems);
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -43,11 +55,13 @@ export default function PersonalizedRecommendations() {
         <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Recommended for You</h2>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-3" aria-label={loading ? 'Loading recommendations' : undefined}>
         {loading && Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
 
         {error && (
-          <p className="text-sm text-center text-red-500 py-4">Failed to load recommendations.</p>
+          <p className="text-sm text-center text-red-500 py-4" role="alert">
+            Could not load recommendations.
+          </p>
         )}
 
         {!loading && !error && items.length === 0 && (
